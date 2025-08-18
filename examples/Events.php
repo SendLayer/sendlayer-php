@@ -18,9 +18,7 @@ try {
     
     echo "📊 Found {$events['totalRecords']} events in the last 7 days:\n";
     
-    foreach ($events['events'] as $event) {
-        echo json_encode($event, JSON_PRETTY_PRINT) . "\n";
-    }
+    echo "Events {$events['events']}";
 
     // Get specific event types
     $deliveredEvents = $sendlayer->Events->get(
@@ -31,15 +29,12 @@ try {
     );
     
     echo "\n📈 Found {$deliveredEvents['totalRecords']} delivered events in the last 30 days\n";
-    foreach ($deliveredEvents['events'] as $event) {
-        echo json_encode($event, JSON_PRETTY_PRINT) . "\n";
-    }
 
     // Get events for a specific message (uncomment and replace with actual message ID)
-    $messageEvents = $sendlayer->Events->get(
-        messageId: 'your-message-id-here'
-    );
-    echo "📧 Found " . count($messageEvents['events']) . " events for message\n";
+    // $messageEvents = $sendlayer->Events->get(
+    //     messageId: 'your-message-id-here'
+    // );
+    // echo "📧 Found " . count($messageEvents['events']) . " events for message\n";
 
 } catch (SendLayerException $e) {
     echo "❌ Error: " . $e->getMessage() . "\n";
