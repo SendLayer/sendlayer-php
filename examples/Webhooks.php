@@ -29,7 +29,7 @@ try {
     }
 
     // Delete a webhook (uncomment and replace with actual webhook ID)
-    $sendlayer->Webhooks->delete(webhookId: 24982);
+    // $sendlayer->Webhooks->delete(webhookId: 24982);
     echo "🗑️ Webhook deleted successfully!\n";
 
 } catch (SendLayerException $e) {

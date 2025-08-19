@@ -24,7 +24,7 @@ try {
     echo "✅ Simple email sent successfully! " . json_encode($response, JSON_PRETTY_PRINT) . "\n";
 
     // Send an email with advanced options
-    $response = $sendlayer->Emails->send(
+    $resp = $sendlayer->Emails->send(
         from: ['email' => 'paulie@example.com', 'name' => 'Paulie Paloma'],
         to: [
                 [ 'name' => 'John Doe', 'email' => 'johndoe@example.com'],
@@ -50,7 +50,7 @@ try {
         ],
         tags: ['test', 'sdk']
     );
-    echo "✅ Complex email sent successfully! Message ID: " . $response['MessageID'] . "\n";
+    echo "✅ Complex email sent successfully! Message ID: " . $resp['MessageID'] . "\n";
 
 } catch (SendLayerException $e) {
     echo "❌ Error: " . $e->getMessage() . "\n";
