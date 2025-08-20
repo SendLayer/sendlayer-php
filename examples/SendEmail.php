@@ -34,7 +34,7 @@ try {
         html: '<h1>Hello!</h1><p>This is a test email with all options</p>',
         cc: ['cc@example.com'],
         bcc: ['bcc@example.com'],
-        replyTo: 'reply-to@ndmediadesigns.com',
+        replyTo: 'reply-to@example.com',
         attachments: [
             [
                 'path' => __DIR__ . '/document.pdf',
