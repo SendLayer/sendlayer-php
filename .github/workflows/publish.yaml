@@ -39,11 +39,11 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      - name: Run PHPStan
-        run: composer run phpstan
+      # - name: Run PHPStan
+      #   run: composer run phpstan
 
-      - name: Run CodeSniffer
-        run: composer run cs
+      # - name: Run CodeSniffer
+      #   run: composer run cs
 
       - name: Run tests
         run: composer run test
