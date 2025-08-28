@@ -114,6 +114,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+        - name: Publish to Packagist
+        run: |
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.PACKAGIST_USERNAME }}:${{ secrets.PACKAGIST_TOKEN }}" \
+            https://packagist.org/api/create-package \
+            -d '{"repository": "https://github.com/${{ github.repository }}"}'
+
       # - name: Publish to Packagist
       #   run: |
       #     curl -X POST \
@@ -121,21 +129,3 @@ jobs:
       #       -H "Authorization: Bearer ${{ secrets.PACKAGIST_TOKEN }}" \
       #       https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }} \
       #       -d '{"repository":{"url":"https://github.com/${{ github.repository }}"}}' 
-
-  publish:
-  needs: build
-  runs-on: ubuntu-latest
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Publish to Packagist
-        run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.PACKAGIST_USERNAME }}:${{ secrets.PACKAGIST_TOKEN }}" \
-            https://packagist.org/api/create-package \
-            -d '{"repository": "https://github.com/${{ github.repository }}"}'
