@@ -34,7 +34,8 @@ jobs:
           git-user-email: github-actions[bot]@users.noreply.github.com
 
       - name: Print changelog result
-        if: steps.changelog.outputs.skipped != 'true'
+        if: ${{ steps.changelog.outputs.skipped != 'true' }}
         run: |
           echo "New version: ${{ steps.changelog.outputs.version }}" || true
+          echo "Tag: ${{ steps.changelog.outputs.tag }}" || true
           echo "Changelog updated: ${{ steps.changelog.outputs.clean_changelog }}" || true 
