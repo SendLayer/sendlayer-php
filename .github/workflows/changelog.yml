@@ -1,0 +1,40 @@
+name: Generate Changelog
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Generate Conventional Changelog
+        uses: TriPSs/conventional-changelog-action@v5
+        id: changelog
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          output-file: CHANGELOG.md
+          preset: conventionalcommits
+          tag-prefix: v
+          release-count: 0
+          skip-version-file: true
+          create-release: false
+          skip-commit: false
+          git-user-name: github-actions[bot]
+          git-user-email: github-actions[bot]@users.noreply.github.com
+
+      - name: Print changelog result
+        if: steps.changelog.outputs.skipped != 'true'
+        run: |
+          echo "New version: ${{ steps.changelog.outputs.version }}" || true
+          echo "Changelog updated: ${{ steps.changelog.outputs.clean_changelog }}" || true 
