@@ -48,7 +48,7 @@ jobs:
       - name: Run tests
         run: composer run test
 
-  build:
+  build-and-publish:
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -82,6 +82,9 @@ jobs:
           key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-php-
 
+      - name: Update Composer
+        run: composer update
+      
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
