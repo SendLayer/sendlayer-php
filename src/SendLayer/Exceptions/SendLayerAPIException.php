@@ -7,13 +7,11 @@ namespace SendLayer\Exceptions;
  */
 class SendLayerAPIException extends SendLayerException
 {
-    public string $message;
     public int $statusCode;
     public array $response;
 
     public function __construct(string $message, int $statusCode, array $response = [])
     {
-        $this->message = $message;
         $this->statusCode = $statusCode;
         $this->response = $response;
         
