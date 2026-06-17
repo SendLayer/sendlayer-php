@@ -243,6 +243,26 @@ try {
 }
 ```
 
+When the API returns errors, the SDK preserves them on the exception's `$errors`
+property as the raw `Errors` entries from the response (each with a numeric `Code`
+and a `Message`). `getMessage()` returns the API's message text verbatim:
+
+```php
+} catch (SendLayerException $e) {
+    echo $e->getMessage();          // e.g. "Recipient email is suppressed"
+
+    foreach ($e->errors as $error) {
+        echo $error['Code'];        // e.g. 14
+        echo $error['Message'];     // e.g. "Recipient email is suppressed"
+    }
+
+    // Branch on a specific SendLayer error code:
+    if (in_array(14, array_column($e->errors, 'Code'), true)) {
+        // recipient suppressed
+    }
+}
+```
+
 ## Exception Types
 
 - `SendLayerException`: Base exception for all SendLayer errors

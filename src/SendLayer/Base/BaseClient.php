@@ -97,22 +97,42 @@ class BaseClient
 
         switch ($statusCode) {
             case 401:
-                return new SendLayerAuthenticationException($responseData['Error'] ?? 'Invalid API key');
+                $exception = new SendLayerAuthenticationException(
+                    $this->extractErrorMessage($responseData, 'Invalid API key')
+                );
+                break;
             case 400:
-                return new SendLayerValidationException($responseData['Error'] ?? 'Invalid request parameters');
+                $exception = new SendLayerValidationException(
+                    $this->extractErrorMessage($responseData, 'Invalid request parameters')
+                );
+                break;
             case 404:
-                return new SendLayerNotFoundException($responseData['Error'] ?? 'Resource not found');
+                $exception = new SendLayerNotFoundException(
+                    $this->extractErrorMessage($responseData, 'Resource not found')
+                );
+                break;
             case 422:
-                return new SendLayerValidationException($responseData['Error'] ?? 'Unprocessable Entity');
+                $exception = new SendLayerValidationException(
+                    $this->extractErrorMessage($responseData, 'Unprocessable Entity')
+                );
+                break;
             case 429:
-                return new SendLayerRateLimitException($responseData['Error'] ?? 'Rate limit exceeded');
+                $exception = new SendLayerRateLimitException(
+                    $this->extractErrorMessage($responseData, 'Rate limit exceeded')
+                );
+                break;
             default:
-                return new SendLayerAPIException(
-                    $responseData['Error'] ?? 'API request failed',
+                $exception = new SendLayerAPIException(
+                    $this->extractErrorMessage($responseData, 'API request failed'),
                     $statusCode,
                     $responseData
                 );
+                break;
         }
+
+        $exception->errors = $this->extractErrors($responseData);
+
+        return $exception;
     }
 
     /**
@@ -127,16 +147,65 @@ class BaseClient
         $responseData = $this->parseErrorResponse($e->getResponse());
 
         if ($statusCode === 500) {
-            return new SendLayerInternalServerException($responseData['Error'] ?? 'Internal server error');
+            $exception = new SendLayerInternalServerException(
+                $this->extractErrorMessage($responseData, 'Internal server error')
+            );
+        } else {
+            $exception = new SendLayerAPIException(
+                $this->extractErrorMessage($responseData, 'Server error'),
+                $statusCode,
+                $responseData
+            );
         }
 
-        return new SendLayerAPIException(
-            $responseData['Error'] ?? 'Server error',
-            $statusCode,
-            $responseData
-        );
+        $exception->errors = $this->extractErrors($responseData);
+
+        return $exception;
     }
 
+
+    /**
+     * Normalize the SendLayer "Errors" array from a decoded response body.
+     *
+     * SendLayer returns errors as: { "Errors": [ { "Code": 14, "Message": "..." } ] }
+     *
+     * @param array $responseData
+     * @return array<int, array<string, mixed>> Empty array when absent or malformed
+     */
+    private function extractErrors(array $responseData): array
+    {
+        if (!empty($responseData['Errors']) && is_array($responseData['Errors'])) {
+            return array_values(array_filter($responseData['Errors'], 'is_array'));
+        }
+
+        return [];
+    }
+
+    /**
+     * Build a human-readable message from the "Errors" array.
+     *
+     * Returns the real API message(s) verbatim, joined by "; " when several are present.
+     * Falls back to the singular "Error" key (reason-phrase path) and then $default.
+     *
+     * @param array $responseData
+     * @param string $default
+     * @return string
+     */
+    private function extractErrorMessage(array $responseData, string $default): string
+    {
+        $parts = [];
+        foreach ($this->extractErrors($responseData) as $error) {
+            if (isset($error['Message'])) {
+                $parts[] = (string) $error['Message'];
+            }
+        }
+
+        if (!empty($parts)) {
+            return implode('; ', $parts);
+        }
+
+        return $responseData['Error'] ?? $default;
+    }
 
     /**
      * Parse error response from API
