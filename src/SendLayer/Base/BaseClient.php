@@ -74,9 +74,9 @@ class BaseClient
             
             return $data ?? [];
         } catch (ClientException $e) {
-            $this->handleClientException($e);
+            throw $this->mapClientException($e);
         } catch (ServerException $e) {
-            $this->handleServerException($e);
+            throw $this->mapServerException($e);
         } catch (ConnectException $e) {
             throw new SendLayerException('Connection error: ' . $e->getMessage());
         } catch (\Exception $e) {
@@ -85,29 +85,29 @@ class BaseClient
     }
 
     /**
-     * Handle client exceptions (4xx errors)
+     * Map a client exception (4xx errors) to the appropriate SendLayer exception
      *
      * @param ClientException $e
-     * @throws SendLayerException
+     * @return SendLayerException
      */
-    private function handleClientException(ClientException $e): void
+    private function mapClientException(ClientException $e): SendLayerException
     {
         $statusCode = $e->getResponse()->getStatusCode();
         $responseData = $this->parseErrorResponse($e->getResponse());
 
         switch ($statusCode) {
             case 401:
-                throw new SendLayerAuthenticationException($responseData['Error'] ?? 'Invalid API key');
+                return new SendLayerAuthenticationException($responseData['Error'] ?? 'Invalid API key');
             case 400:
-                throw new SendLayerValidationException($responseData['Error'] ?? 'Invalid request parameters');
+                return new SendLayerValidationException($responseData['Error'] ?? 'Invalid request parameters');
             case 404:
-                throw new SendLayerNotFoundException($responseData['Error'] ?? 'Resource not found');
+                return new SendLayerNotFoundException($responseData['Error'] ?? 'Resource not found');
             case 422:
-                throw new SendLayerValidationException($responseData['Error'] ?? 'Unprocessable Entity');
+                return new SendLayerValidationException($responseData['Error'] ?? 'Unprocessable Entity');
             case 429:
-                throw new SendLayerRateLimitException($responseData['Error'] ?? 'Rate limit exceeded');
+                return new SendLayerRateLimitException($responseData['Error'] ?? 'Rate limit exceeded');
             default:
-                throw new SendLayerAPIException(
+                return new SendLayerAPIException(
                     $responseData['Error'] ?? 'API request failed',
                     $statusCode,
                     $responseData
@@ -116,21 +116,21 @@ class BaseClient
     }
 
     /**
-     * Handle server exceptions (5xx errors)
+     * Map a server exception (5xx errors) to the appropriate SendLayer exception
      *
      * @param ServerException $e
-     * @throws SendLayerException
+     * @return SendLayerException
      */
-    private function handleServerException(ServerException $e): void
+    private function mapServerException(ServerException $e): SendLayerException
     {
         $statusCode = $e->getResponse()->getStatusCode();
         $responseData = $this->parseErrorResponse($e->getResponse());
 
         if ($statusCode === 500) {
-            throw new SendLayerInternalServerException($responseData['Error'] ?? 'Internal server error');
+            return new SendLayerInternalServerException($responseData['Error'] ?? 'Internal server error');
         }
 
-        throw new SendLayerAPIException(
+        return new SendLayerAPIException(
             $responseData['Error'] ?? 'Server error',
             $statusCode,
             $responseData
