@@ -26,10 +26,6 @@
             "homepage": "https://developers.sendlayer.com"
         },
         {
-            "name": "Jared Atchison",
-            "homepage": "https://github.com/jaredatch"
-        },
-        {
             "name": "Gregor Capuder",
             "homepage": "https://github.com/capuderg"
         },
@@ -44,7 +40,7 @@
     ],
     "require": {
         "php": ">=7.4",
-        "guzzlehttp/guzzle": "^7.0",
+        "guzzlehttp/guzzle": "^8.0",
         "ext-json": "*"
     },
     "require-dev": {
