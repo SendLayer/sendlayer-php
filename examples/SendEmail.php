@@ -23,6 +23,17 @@ try {
     );
     echo "✅ Simple email sent successfully! " . json_encode($response, JSON_PRETTY_PRINT) . "\n";
 
+    // Send both parts: HTML for clients that render it, plain text as the
+    // fallback alternative. Recommended for deliverability.
+    $fallback = $sendlayer->Emails->send(
+        from:    'paulie@example.com',
+        to:      'recipient@example.com',
+        subject: 'Welcome aboard',
+        html:    '<html><body><p>Thanks for signing up!</p></body></html>',
+        text:    'Thanks for signing up!',
+    );
+    echo "✅ Complex email sent successfully! Message ID: " . $fallback['MessageID'] . "\n";
+
     // Send an email with advanced options
     $resp = $sendlayer->Emails->send(
         from: ['email' => 'paulie@example.com', 'name' => 'Paulie Paloma'],
