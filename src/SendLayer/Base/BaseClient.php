@@ -74,9 +74,9 @@ class BaseClient
             
             return $data ?? [];
         } catch (ClientException $e) {
-            $this->handleClientException($e);
+            throw $this->mapClientException($e);
         } catch (ServerException $e) {
-            $this->handleServerException($e);
+            throw $this->mapServerException($e);
         } catch (ConnectException $e) {
             throw new SendLayerException('Connection error: ' . $e->getMessage());
         } catch (\Exception $e) {
@@ -85,58 +85,127 @@ class BaseClient
     }
 
     /**
-     * Handle client exceptions (4xx errors)
+     * Map a client exception (4xx errors) to the appropriate SendLayer exception
      *
      * @param ClientException $e
-     * @throws SendLayerException
+     * @return SendLayerException
      */
-    private function handleClientException(ClientException $e): void
+    private function mapClientException(ClientException $e): SendLayerException
     {
         $statusCode = $e->getResponse()->getStatusCode();
         $responseData = $this->parseErrorResponse($e->getResponse());
 
         switch ($statusCode) {
             case 401:
-                throw new SendLayerAuthenticationException($responseData['Error'] ?? 'Invalid API key');
+                $exception = new SendLayerAuthenticationException(
+                    $this->extractErrorMessage($responseData, 'Invalid API key')
+                );
+                break;
             case 400:
-                throw new SendLayerValidationException($responseData['Error'] ?? 'Invalid request parameters');
+                $exception = new SendLayerValidationException(
+                    $this->extractErrorMessage($responseData, 'Invalid request parameters')
+                );
+                break;
             case 404:
-                throw new SendLayerNotFoundException($responseData['Error'] ?? 'Resource not found');
+                $exception = new SendLayerNotFoundException(
+                    $this->extractErrorMessage($responseData, 'Resource not found')
+                );
+                break;
             case 422:
-                throw new SendLayerValidationException($responseData['Error'] ?? 'Unprocessable Entity');
+                $exception = new SendLayerValidationException(
+                    $this->extractErrorMessage($responseData, 'Unprocessable Entity')
+                );
+                break;
             case 429:
-                throw new SendLayerRateLimitException($responseData['Error'] ?? 'Rate limit exceeded');
+                $exception = new SendLayerRateLimitException(
+                    $this->extractErrorMessage($responseData, 'Rate limit exceeded')
+                );
+                break;
             default:
-                throw new SendLayerAPIException(
-                    $responseData['Error'] ?? 'API request failed',
+                $exception = new SendLayerAPIException(
+                    $this->extractErrorMessage($responseData, 'API request failed'),
                     $statusCode,
                     $responseData
                 );
+                break;
         }
+
+        $exception->errors = $this->extractErrors($responseData);
+
+        return $exception;
     }
 
     /**
-     * Handle server exceptions (5xx errors)
+     * Map a server exception (5xx errors) to the appropriate SendLayer exception
      *
      * @param ServerException $e
-     * @throws SendLayerException
+     * @return SendLayerException
      */
-    private function handleServerException(ServerException $e): void
+    private function mapServerException(ServerException $e): SendLayerException
     {
         $statusCode = $e->getResponse()->getStatusCode();
         $responseData = $this->parseErrorResponse($e->getResponse());
 
         if ($statusCode === 500) {
-            throw new SendLayerInternalServerException($responseData['Error'] ?? 'Internal server error');
+            $exception = new SendLayerInternalServerException(
+                $this->extractErrorMessage($responseData, 'Internal server error')
+            );
+        } else {
+            $exception = new SendLayerAPIException(
+                $this->extractErrorMessage($responseData, 'Server error'),
+                $statusCode,
+                $responseData
+            );
         }
 
-        throw new SendLayerAPIException(
-            $responseData['Error'] ?? 'Server error',
-            $statusCode,
-            $responseData
-        );
+        $exception->errors = $this->extractErrors($responseData);
+
+        return $exception;
     }
 
+
+    /**
+     * Normalize the SendLayer "Errors" array from a decoded response body.
+     *
+     * SendLayer returns errors as: { "Errors": [ { "Code": 14, "Message": "..." } ] }
+     *
+     * @param array $responseData
+     * @return array<int, array<string, mixed>> Empty array when absent or malformed
+     */
+    private function extractErrors(array $responseData): array
+    {
+        if (!empty($responseData['Errors']) && is_array($responseData['Errors'])) {
+            return array_values(array_filter($responseData['Errors'], 'is_array'));
+        }
+
+        return [];
+    }
+
+    /**
+     * Build a human-readable message from the "Errors" array.
+     *
+     * Returns the real API message(s) verbatim, joined by "; " when several are present.
+     * Falls back to the singular "Error" key (reason-phrase path) and then $default.
+     *
+     * @param array $responseData
+     * @param string $default
+     * @return string
+     */
+    private function extractErrorMessage(array $responseData, string $default): string
+    {
+        $parts = [];
+        foreach ($this->extractErrors($responseData) as $error) {
+            if (isset($error['Message'])) {
+                $parts[] = (string) $error['Message'];
+            }
+        }
+
+        if (!empty($parts)) {
+            return implode('; ', $parts);
+        }
+
+        return $responseData['Error'] ?? $default;
+    }
 
     /**
      * Parse error response from API

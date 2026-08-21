@@ -182,7 +182,10 @@ class Emails
         ?array $headers = null,
         ?array $tags = null
     ): array {
-        if (empty($text) && empty($html)) {
+        $hasHtml = $html !== null && $html !== '';
+        $hasText = $text !== null && $text !== '';
+
+        if (!$hasHtml && !$hasText) {
             throw new SendLayerValidationException("Either 'text' or 'html' content must be provided.");
         }
 
@@ -194,12 +197,14 @@ class Emails
             'From' => $fromDetails,
             'To' => $toList,
             'Subject' => $subject,
-            'ContentType' => !empty($html) ? 'HTML' : 'Text',
+            'ContentType' => $hasHtml ? 'HTML' : 'Text',
         ];
 
-        if (!empty($html)) {
+        if ($hasHtml) {
             $payload['HTMLContent'] = $html;
-        } else {
+        }
+
+        if ($hasText) {
             $payload['PlainContent'] = $text;
         }
 
