@@ -9,6 +9,9 @@ Before pushing and publishing a new SDK version, ensure you have completed all o
 
 ## 2. Changelog
 - [ ] Update the `CHANGELOG.md` with all new features, bug fixes, and breaking changes.
+      A hand-written entry headed `## [<version>]` or `## <version>` always wins; if
+      none exists, `publish.yaml` generates one from conventional commit messages,
+      which only captures commits formatted as `type: description`.
 - [ ] Double-check that all changes since the last release are documented.
 
 ## 3. Code Quality
@@ -34,7 +37,8 @@ Before pushing and publishing a new SDK version, ensure you have completed all o
 ## 7. Git
 - [ ] Commit all changes and push to the main branch.
 - [ ] Ensure the latest commit is on `main` and up to date with remote.
-- [ ] Tag the release with the version number (the workflow will also do this).
+- [ ] Do **not** tag manually. `publish.yaml` creates and pushes `v<version>` on
+      merge to `main`, and fails deliberately if that tag already exists.
 
 ## 8. CI/CD
 - [ ] Ensure all GitHub Actions workflows pass (tests, build, publish, etc.).
