@@ -17,7 +17,7 @@ jobs:
     #     php: [7.4, 8.0, 8.1, 8.2, 8.3]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -30,7 +30,7 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -76,7 +76,7 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
@@ -88,12 +88,76 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      - name: Create and push tag
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Generates the entry for this release and commits it BEFORE tagging, so the
+      # tag and the GitHub Release both contain their own changelog. A hand-written
+      # entry for the version always wins -- generation is only the fallback, and it
+      # only ever prepends the newest release, never rewrites earlier ones.
+      - name: Update changelog
         run: |
+          set -euo pipefail
+
+          if grep -qE "^## \\[?${VERSION}\\]?" CHANGELOG.md; then
+            echo "CHANGELOG.md already documents ${VERSION}; keeping the existing entry."
+            exit 0
+          fi
+
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          cat > /tmp/changelog-context.json <<EOF
+          {
+            "version": "${VERSION}",
+            "host": "${{ github.server_url }}",
+            "owner": "${{ github.repository_owner }}",
+            "repository": "${{ github.event.repository.name }}",
+            "linkReferences": true,
+            "currentTag": "v${VERSION}",
+            "previousTag": "${PREV_TAG}"
+          }
+          EOF
+
+          npx -y conventional-changelog-cli@5 \
+            --preset conventionalcommits \
+            --release-count 1 \
+            --context /tmp/changelog-context.json > /tmp/changelog-entry.md
+
+          # Splice the new entry in below the title/preamble rather than above it,
+          # and leave older entries untouched.
+          awk '
+            NR==FNR { entry = entry $0 ORS; next }
+            /^## / && !inserted { printf "%s\n", entry; inserted = 1 }
+            { print }
+            END { if (!inserted) printf "%s\n", entry }
+          ' /tmp/changelog-entry.md CHANGELOG.md > /tmp/changelog-merged.md
+          mv /tmp/changelog-merged.md CHANGELOG.md
+
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "No changelog changes to commit."
+            exit 0
+          fi
+
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git tag -a v${{ env.VERSION }} -m "Release v${{ env.VERSION }}"
-          git push origin v${{ env.VERSION }}
+          git add CHANGELOG.md
+          git commit -m "chore(release): update changelog for v${VERSION} [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Create and push tag
+        run: |
+          set -euo pipefail
+
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::Tag v${VERSION} already exists on origin. Bump the version field in composer.json before merging." >&2
+            exit 1
+          fi
+
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
 
       - name: Build package
         run: composer run build
@@ -108,23 +172,8 @@ jobs:
             composer.lock
             src/**
             README.md
+            CHANGELOG.md
             LICENSE
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # - name: Publish to Packagist
-      #   run: |
-      #     curl -X POST \
-      #       -H "Content-Type: application/json" \
-      #       -H "Authorization: Bearer ${{ secrets.PACKAGIST_USERNAME }}:${{ secrets.PACKAGIST_TOKEN }}" \
-      #       https://packagist.org/api/create-package \
-      #       -d '{"repository": "https://github.com/${{ github.repository }}"}'
-
-      # - name: Publish to Packagist
-      #   run: |
-      #     curl -X POST \
-      #       -H "Content-Type: application/json" \
-      #       -H "Authorization: Bearer ${{ secrets.PACKAGIST_TOKEN }}" \
-      #       https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }} \
-      #       -d '{"repository":{"url":"https://github.com/${{ github.repository }}"}}' 
