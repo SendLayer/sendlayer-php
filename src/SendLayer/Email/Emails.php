@@ -185,7 +185,7 @@ class Emails
         $hasHtml = $html !== null && $html !== '';
         $hasText = $text !== null && $text !== '';
 
-        if (!$hasHtml && !$hasText) {                                
+        if (!$hasHtml && !$hasText) {
             throw new SendLayerValidationException("Either 'text' or 'html' content must be provided.");
         }
 
@@ -202,8 +202,8 @@ class Emails
 
         if ($hasHtml) {
             $payload['HTMLContent'] = $html;
-        } 
-        
+        }
+
         if ($hasText) {
             $payload['PlainContent'] = $text;
         }
